@@ -1,2 +1,3 @@
 astpretty
 tokenize-rt
+PyQt6
