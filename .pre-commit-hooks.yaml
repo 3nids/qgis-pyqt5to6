@@ -1,0 +1,5 @@
+- id: pyqt5to6
+  name: pyqt5to6
+  description: runs migration to support PyQt6 in QGIS
+  entry: pyqt5to6
+  language: python
