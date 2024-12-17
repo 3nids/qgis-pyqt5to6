@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  release:
+  
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    environment:
+      name: pypi
+      url: https://pypi.org/p/${{ github.event.repository.name }}
+    permissions:
+      id-token: write
+      contents: write
+      
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get source code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: "requirements*.txt"
+
+      - name: Install project requirements
+        run: |
+          python -m pip install -U pip setuptools wheel
+          python -m pip install -U build
+
+      - name: Install project as a package
+        run: python -m pip install -e .
+
+      - name: Build a binary wheel and a source tarball
+        run: python -m  build .
+
+      - name: upload release asset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload --repo ${{ github.repository_owner }}/${{ github.event.repository.name }} ${{ github.ref_name }} "dist/${{ github.event.repository.name }}-${{ github.ref_name }}.tar.gz"
+
+      - name: Deploy to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
