@@ -20,7 +20,7 @@ license = { text = "MIT License" }
 dynamic = ["version", "readme", "dependencies"]
 
 [project.scripts]
-pyqt5to6 = "pyqt5to6.pyqt5to6:pyqt5to6"
+pyqt5to6 = "pyqt5to6.pyqt5to6:main"
 
 [project.urls]
 homepage = "https://github.com/3nids/qgis-pyqt5to6"
