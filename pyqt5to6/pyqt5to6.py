@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """
 ***************************************************************************
     3to4.py
@@ -42,6 +43,7 @@ import argparse
 import ast
 import glob
 import inspect
+import json
 import os
 import sys
 
@@ -176,12 +178,12 @@ import_warnings = {
     "QRegExp": "QRegExp is removed in Qt6, please use QRegularExpression for Qt5/Qt6 compatibility"
 }
 
-# { (class, enum_value) : enum_name }
+
 qt_enums = {}
 ambiguous_enums = defaultdict(set)
 
 
-def fix_file(filename: str, qgis3_compat: bool) -> int:
+def fix_file(filename: str, qgis3_compat: bool, qt_enums: dict, ambiguous_enums: dict) -> int:
 
     with open(filename, encoding="UTF-8") as f:
         contents = f.read()
@@ -695,7 +697,7 @@ def fix_file(filename: str, qgis3_compat: bool) -> int:
     return new_contents != contents
 
 
-def get_class_enums(item):
+def get_class_enums(item, qt_enums: dict, ambiguous_enums: dict):
     if not inspect.isclass(item):
         return
 
@@ -753,23 +755,37 @@ def get_class_enums(item):
                             )
 
         elif inspect.isclass(value):
-            get_class_enums(value)
+            enums = get_class_enums(value, qt_enums, ambiguous_enums)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("directory")
+    parser.add_argument("directory", nargs='?')
+    parser.add_argument("--update-enum-file", action="store_true", help="Update enum file for usage without QGIS available")
     parser.add_argument(
         "--qgis3-incompatible-changes",
         action="store_true",
         help="Apply modifications that would break behavior on QGIS 3, hence code may not work on QGIS 3",
     )
     args = parser.parse_args(argv)
+    
+    if args.update_enum_file or qgis_core is not None:
+        for module in target_modules:
+            for value in module.__dict__.values():
+                get_class_enums(value, qt_enums, ambiguous_enums)
 
-    # get all scope for all qt enum
-    for module in target_modules:
-        for key, value in module.__dict__.items():
-            get_class_enums(value)
+        if args.update_enum_file:
+            with open('enums.json', "w") as enum_file:
+                my_json_object = json.dump({
+                        'qt_enums': dict((':'.join(k), v) for k,v in qt_enums.items()), 
+                        'ambiguous_enums':  dict((':'.join(k), list(v)) for k,v in ambiguous_enums.items())
+                    }, enum_file)
+            return
+        
+    if qgis_core is None:
+        print("QGIS library not availabled, loading enums from file")
+        data = json.loads('enums.json')
+        
 
     ret = 0
     for filename in glob.glob(os.path.join(args.directory, "**/*.py"), recursive=True):
@@ -777,7 +793,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if "auto_additions" in filename:
             continue
 
-        ret |= fix_file(filename, not args.qgis3_incompatible_changes)
+        ret |= fix_file(filename, not args.qgis3_incompatible_changes, qt_enums, ambiguous_enums)
     return ret
 
 
