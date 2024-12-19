@@ -51,6 +51,7 @@ import sys
 from collections import defaultdict
 from collections.abc import Sequence
 from enum import Enum
+from pathlib import Path
 
 from PyQt6 import (
     Qsci,
@@ -790,7 +791,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         
     if qgis_core is None:
         print("QGIS library not availabled, loading enums from file")
-        data = json.loads('enums.json')
+        filename = inspect.getframeinfo(inspect.currentframe()).filename
+        path = os.path.dirname(os.path.abspath(filename))
+        with open(Path(path) / 'enums.json', 'r') as file:
+            data = json.load(file)
+    
+        for key in data['qt_enums'].keys():
+            qt_enums[tuple(key.split(':'))] = data['qt_enums'][key]
+        for key in data['ambiguous_enums'].keys():
+            ambiguous_enums[tuple(key.split(':'))] = set(data['ambiguous_enums'][key])
         
 
     ret = 0
