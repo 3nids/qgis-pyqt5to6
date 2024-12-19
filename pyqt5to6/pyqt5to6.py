@@ -41,6 +41,7 @@ __copyright__ = "(C) 2023, Julien Cabieces"
 
 import argparse
 import ast
+import difflib
 import glob
 import inspect
 import json
@@ -183,7 +184,7 @@ qt_enums = {}
 ambiguous_enums = defaultdict(set)
 
 
-def fix_file(filename: str, qgis3_compat: bool, qt_enums: dict, ambiguous_enums: dict) -> int:
+def fix_file(filename: str, in_place, qgis3_compat: bool, qt_enums: dict, ambiguous_enums: dict) -> int:
 
     with open(filename, encoding="UTF-8") as f:
         contents = f.read()
@@ -691,9 +692,13 @@ def fix_file(filename: str, qgis3_compat: bool, qt_enums: dict, ambiguous_enums:
             tokens[i + 2] = tokens[i + 2]._replace(src=f"{enum_name[0]}.{enum_name[1]}")
 
     new_contents = tokens_to_src(tokens)
-    with open(filename, "w") as f:
-        f.write(new_contents)
-
+    if in_place:
+        with open(filename, "w") as f:
+            f.write(new_contents)
+    else:
+        diff = difflib.unified_diff(contents.split('\n'), new_contents.split('\n'), fromfile=filename, tofile="fixed")
+        for line in diff:
+            print(line)
     return new_contents != contents
 
 
@@ -760,7 +765,8 @@ def get_class_enums(item, qt_enums: dict, ambiguous_enums: dict):
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("directory", nargs='?')
+    parser.add_argument("directory", nargs='?', default=os.getcwd())
+    parser.add_argument("-i", "--in-place", action="store_true", help="Apply changes in place")
     parser.add_argument("--update-enum-file", action="store_true", help="Update enum file for usage without QGIS available")
     parser.add_argument(
         "--qgis3-incompatible-changes",
@@ -793,7 +799,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if "auto_additions" in filename:
             continue
 
-        ret |= fix_file(filename, not args.qgis3_incompatible_changes, qt_enums, ambiguous_enums)
+        ret |= fix_file(filename, args.in_place, not args.qgis3_incompatible_changes, qt_enums, ambiguous_enums)
     return ret
 
 
