@@ -52,63 +52,62 @@ from collections import defaultdict
 from collections.abc import Sequence
 from enum import Enum
 from pathlib import Path
-
-from PyQt6 import (
-    Qsci,
-    QtCore,
-    QtGui,
-    QtNetwork,
-    QtPrintSupport,
-    QtSql,
-    QtSvg,
-    QtTest,
-    QtWidgets,
-    QtXml,
-)
-from PyQt6.Qsci import *  # noqa: F403
-from PyQt6.QtCore import *  # noqa: F403
-from PyQt6.QtGui import *  # noqa: F403
-from PyQt6.QtNetwork import *  # noqa: F403
-from PyQt6.QtPrintSupport import *  # noqa: F403
-from PyQt6.QtSql import *  # noqa: F403
-from PyQt6.QtTest import *  # noqa: F403
-from PyQt6.QtWidgets import *  # noqa: F403
-from PyQt6.QtXml import *  # noqa: F403
 from tokenize_rt import Offset, Token, reversed_enumerate, src_to_tokens, tokens_to_src
 
 try:
+    from PyQt6 import (
+        Qsci,
+        QtCore,
+        QtGui,
+        QtNetwork,
+        QtPrintSupport,
+        QtSql,
+        QtSvg,
+        QtTest,
+        QtWidgets,
+        QtXml,
+    )
+    from PyQt6.Qsci import *  # noqa: F403
+    from PyQt6.QtCore import *  # noqa: F403
+    from PyQt6.QtGui import *  # noqa: F403
+    from PyQt6.QtNetwork import *  # noqa: F403
+    from PyQt6.QtPrintSupport import *  # noqa: F403
+    from PyQt6.QtSql import *  # noqa: F403
+    from PyQt6.QtTest import *  # noqa: F403
+    from PyQt6.QtWidgets import *  # noqa: F403
+    from PyQt6.QtXml import *  # noqa: F403
+
     import qgis._3d as qgis_3d  # noqa: F403
     import qgis.analysis as qgis_analysis  # noqa: F403
     import qgis.core as qgis_core  # noqa: F403
     import qgis.gui as qgis_gui  # noqa: F403
-
     from qgis._3d import *  # noqa: F403
     from qgis.analysis import *  # noqa: F403
     from qgis.core import *  # noqa: F403
     from qgis.gui import *  # noqa: F403
-except ImportError:
-    qgis_core = None
-    qgis_gui = None
-    qgis_analysis = None
-    qgis_3d = None
-    print(
-        "QGIS classes not available for introspection, only a partial upgrade will be performed"
-    )
 
-target_modules = [
-    QtCore,
-    QtGui,
-    QtWidgets,
-    QtTest,
-    QtSql,
-    QtSvg,
-    QtXml,
-    QtNetwork,
-    QtPrintSupport,
-    Qsci,
-]
-if qgis_core is not None:
-    target_modules.extend([qgis_core, qgis_gui, qgis_analysis, qgis_3d])
+except ImportError:
+    pass
+
+try:
+    target_modules = [
+        QtCore,
+        QtGui,
+        QtWidgets,
+        QtTest,
+        QtSql,
+        QtSvg,
+        QtXml,
+        QtNetwork,
+        QtPrintSupport,
+        Qsci,
+        qgis_core, 
+        qgis_gui, 
+        qgis_analysis, 
+        qgis_3d
+    ]
+except NameError:
+    target_modules = None
 
 # qmetatype which have been renamed
 qmetatype_mapping = {
@@ -776,7 +775,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     
-    if args.update_enum_file or qgis_core is not None:
+    if args.update_enum_file or target_modules is not None:
         for module in target_modules:
             for value in module.__dict__.values():
                 get_class_enums(value, qt_enums, ambiguous_enums)
@@ -789,8 +788,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                     }, enum_file)
             return
         
-    if qgis_core is None:
-        print("QGIS library not availabled, loading enums from file")
+    if target_modules is None:
+        print(
+            "PyQt or QGIS classes not available for introspection, loading enums from cached file."
+        )
         filename = inspect.getframeinfo(inspect.currentframe()).filename
         path = os.path.dirname(os.path.abspath(filename))
         with open(Path(path) / 'enums.json', 'r') as file:
@@ -800,7 +801,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             qt_enums[tuple(key.split(':'))] = data['qt_enums'][key]
         for key in data['ambiguous_enums'].keys():
             ambiguous_enums[tuple(key.split(':'))] = set(data['ambiguous_enums'][key])
-        
 
     ret = 0
     for filename in glob.glob(os.path.join(args.directory, "**/*.py"), recursive=True):
