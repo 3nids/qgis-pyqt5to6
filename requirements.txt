@@ -1,2 +1,4 @@
 astpretty
 tokenize-rt
+PyQt6
+PyQt6-QScintilla
