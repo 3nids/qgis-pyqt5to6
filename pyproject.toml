@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=45", "setuptools-git-versioning<2"]
+requires = ["setuptools>=61", "setuptools-git-versioning<2","setuptools-scm>=8.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -29,6 +29,9 @@ tracker = "https://github.com/3nids/qgis-pyqt5to6/issues"
 
 [tool.setuptools]
 packages = ["pyqt5to6"]
+
+[tool.setuptools.package-data]
+pyqt5to6 = ["enums.json"]
 
 [tool.setuptools-git-versioning]
 enabled = true
